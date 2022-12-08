@@ -101,6 +101,7 @@ def warpDocumentNaive(
 
 
 if __name__ == "__main__":
+    # Small 3D rotation
     img = cv2.imread('test/image/ProgrammingLanguage.jpg', 1).astype(np.float32)
     warpped_img = warpDocumentNaive(
         img,
@@ -109,4 +110,15 @@ if __name__ == "__main__":
         rt=(1627, 804),
         rb=(2979, 2641),
     )
-    cv2.imwrite('test/warp_result/warpped.jpg', warpped_img)
+    cv2.imwrite('test/warp_result/warpped_straight.jpg', warpped_img)
+
+    # Extream 3D rotation
+    img_lean = cv2.imread('test/image/ProgrammingLanguageLean.jpg', 1).astype(np.float32)
+    warpped_img_lean = warpDocumentNaive(
+        img_lean,
+        lt=(97, 783),
+        lb=(2253, 2806),
+        rt=(1700, 288),
+        rb=(3928, 1164),
+    )
+    cv2.imwrite('test/warp_result/warpped_lean.jpg', warpped_img_lean)
