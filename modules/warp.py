@@ -47,6 +47,7 @@ def warpDocument(img: np.ndarray, lt: tuple[int, int], lb: tuple[int, int], rt: 
             0 S 0 
             0 0 1
     """
+    # TODO
     pass
 
 
@@ -70,39 +71,30 @@ def warpDocumentNaive(
         numpy array of warped document image.
     """
 
-    """
-    Step for restoring document:
-        1. 2D Translation: Move lt (left top) to (0, 0)
-             1  0 tx
-             0  1 ty
-             0  0  1
-        2. Pick width, height to maximum width and maximum height from the warped document
-        3. Set 4 corners based on step 2's width and height, and get transformation matrix
-        4. Warp with calculated transformation matrix
-    """
-
-    # 1. 2D Translation: Move lt (left top) to (0, 0)
+    # 1. 2D Translation: Move lt (left top) to (0, 0).
     tx = -lt[0]; ty = -lt[1]
     ltTransformed = (0, 0)
     lbTransformed = ((lb[0] + tx), (lb[1] + ty))
     rtTransformed = ((rt[0] + tx), (rt[1] + ty))
     rbTransformed = ((rb[0] + tx), (rb[1] + ty))
 
-    # 2. Pick width, height to maximum width and maximum height from the warped document
+    # 2. Pick width, height to maximum width and maximum height from the warped document.
     originalWidth = max(calcDistance(ltTransformed, rtTransformed), calcDistance(lbTransformed, rbTransformed))
     originalHeight = max(calcDistance(ltTransformed, lbTransformed), calcDistance(rtTransformed, rbTransformed))
  
-    # 3. Set 4 corners based on step 2's width and height, and get transformation matrix
+    # 3. Set 4 corners based on step 2's width and height
     ltOriginal = (0, 0)
     lbOriginal = (0, originalHeight) 
     rtOriginal = (originalWidth, 0)
     rbOriginal = (originalWidth, originalHeight)
+
+    # 4. Get transformation matrix based on corners on step 3.
     transMat = cv2.getPerspectiveTransform(
         src = np.array([list(lt), list(lb), list(rt), list(rb)]).astype(np.float32),
         dst = np.array([list(ltOriginal), list(lbOriginal), list(rtOriginal), list(rbOriginal)]).astype(np.float32),
     )
 
-    # 4. Warp with calculated transformation matrix
+    # 5. Warp with calculated transformation matrix and return.
     warpped_img = cv2.warpPerspective(img, transMat, (int(np.ceil(originalWidth)), int(np.ceil(originalHeight))))
 
     return warpped_img
