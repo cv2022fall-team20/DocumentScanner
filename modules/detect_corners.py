@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 
 # Hyperparameters.
+MAX_RESIZED_DIMENSION = 960
 GAUSSIAN_BLUR_KERNEL_SIZE = (5, 5)
 ADAPTIVE_THRESHOLD_BLOCK_SIZE = 11
 ADAPTIVE_THRESHOLD_C = 2
@@ -9,6 +10,18 @@ INITIAL_EPSILON_MULTIPLIER = 0.01
 EPSILON_MULTIPLIER_INCREMENT = 0.01
 MAX_EPSILON_MULTIPLIER = 0.1
 MIN_AREA_PROPORTION = 0.1
+MIN_IMAGE_BORDER_GAP = 2
+
+
+def resize_image(image: np.ndarray, max_dimension: int) -> tuple[np.ndarray,
+                                                                 float]:
+    """
+    Resize an image so that its largest dimension is equal to max_dimension.
+    Return the resized image and the scale factor used to resize the image.
+    """
+    resize_scale = max_dimension / max(image.shape[:2])
+    resized_image = cv2.resize(image, None, fx=resize_scale, fy=resize_scale)
+    return resized_image, resize_scale
 
 
 def sort_corner_coordinates(corners: tuple[tuple[int, int], tuple[int, int],
@@ -39,8 +52,10 @@ def detect_corners(image: np.ndarray) \
     the top-left corner.
     """
     grayscale_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    blurred_image = cv2.GaussianBlur(grayscale_image,
-                                     GAUSSIAN_BLUR_KERNEL_SIZE, 0)
+    resized_image, resize_scale = resize_image(grayscale_image,
+                                               MAX_RESIZED_DIMENSION)
+    blurred_image = cv2.GaussianBlur(resized_image, GAUSSIAN_BLUR_KERNEL_SIZE,
+                                     0)
     thresholded_image = cv2.adaptiveThreshold(
         blurred_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY, ADAPTIVE_THRESHOLD_BLOCK_SIZE, ADAPTIVE_THRESHOLD_C)
@@ -55,21 +70,35 @@ def detect_corners(image: np.ndarray) \
     # epsilon value and increase it until an approximated contour with four
     # points is found.
     epsilon_multiplier = INITIAL_EPSILON_MULTIPLIER
-    image_area = image.shape[0] * image.shape[1]
+    resized_image_height, resized_image_width = resized_image.shape[:2]
+    resized_image_area = resized_image_height * resized_image_width
     while epsilon_multiplier <= MAX_EPSILON_MULTIPLIER:
         for contour in contours:
             contour_length = cv2.arcLength(contour, False)
             approximated_contour = cv2.approxPolyDP(
                 contour, epsilon_multiplier * contour_length, True)
-            # Check if the approximated contour is a convex quadrilateral with
-            # a large enough area.
-            if (len(approximated_contour) == 4
-                    and cv2.isContourConvex(approximated_contour)
-                    and cv2.contourArea(approximated_contour)
-                    >= MIN_AREA_PROPORTION * image_area):
-                corners = tuple(map(tuple, approximated_contour.reshape(4, 2)))
-                sorted_corners = sort_corner_coordinates(corners)
-                return sorted_corners
+            # Check if the contour is a convex quadrilateral with a large
+            # enough area.
+            if (len(approximated_contour) != 4
+                    or not cv2.isContourConvex(approximated_contour)
+                    or cv2.contourArea(approximated_contour)
+                    < MIN_AREA_PROPORTION * resized_image_area):
+                continue
+            corners = tuple(map(tuple, approximated_contour.reshape(4, 2)))
+            # Check if any of the corners is too close to the image border.
+            if any(corner[0] < MIN_IMAGE_BORDER_GAP
+                   or corner[0] >= resized_image_width - MIN_IMAGE_BORDER_GAP
+                   or corner[1] < MIN_IMAGE_BORDER_GAP
+                   or corner[1] >= resized_image_height - MIN_IMAGE_BORDER_GAP
+                   for corner in corners):
+                continue
+            sorted_corners = sort_corner_coordinates(corners)
+            # Scale the coordinates of the corners back to the original image
+            # size.
+            scaled_corners = tuple((round(corner[0] / resize_scale),
+                                    round(corner[1] / resize_scale))
+                                   for corner in sorted_corners)
+            return scaled_corners
         else:
             epsilon_multiplier += EPSILON_MULTIPLIER_INCREMENT
     else:
@@ -77,22 +106,26 @@ def detect_corners(image: np.ndarray) \
 
 
 def main():
-    image = cv2.imread('../test/image/ProgrammingLanguageSmall.jpg')
+    image = cv2.imread('../test/image/ProgrammingLanguage.jpg')
     corners = detect_corners(image)
     # Draw the edges of the document.
+    max_image_dimension = max(image.shape[:2])
+    edge_thickness = max_image_dimension // 400
     for i in range(4):
-        cv2.line(image, corners[i], corners[(i + 1) % 4], (0, 0, 255), 2)
+        cv2.line(image, corners[i], corners[(i + 1) % 4], (0, 0, 255),
+                 edge_thickness)
     # Label the corners.
     font = cv2.FONT_HERSHEY_DUPLEX
-    font_scale = 1
-    text_thickness = 2
+    font_scale = max_image_dimension / 1000
+    text_thickness = max_image_dimension // 400
     text_size, _ = cv2.getTextSize('0', font, font_scale, text_thickness)
     for i, corner in enumerate(corners):
         text_origin = (corner[0] - text_size[0] // 2,
                        corner[1] + text_size[1] // 2)
         cv2.putText(image, str(i), text_origin, font, font_scale, (0, 255, 0),
                     text_thickness, cv2.LINE_AA)
-    cv2.imshow('Detected document', image)
+    resized_image, _ = resize_image(image, MAX_RESIZED_DIMENSION)
+    cv2.imshow('Detected document', resized_image)
     cv2.waitKey(0)
 
 
