@@ -1,3 +1,5 @@
+import glob
+
 import cv2
 import numpy as np
 
@@ -7,7 +9,7 @@ GAUSSIAN_BLUR_KERNEL_SIZE = 5
 ADAPTIVE_THRESHOLD_BLOCK_SIZE = 11
 ADAPTIVE_THRESHOLD_C = 2
 CANNY_LOWER_THRESHOLD = 10
-CANNY_UPPER_THRESHOLD = 100
+CANNY_UPPER_THRESHOLD = 50
 DILATION_KERNEL_SIZE = 3
 INITIAL_EPSILON_MULTIPLIER = 0.01
 EPSILON_MULTIPLIER_INCREMENT = 0.01
@@ -159,9 +161,13 @@ def detect_corners(image: np.ndarray) \
         raise RuntimeError('Failed to detect document.')
 
 
-def main():
-    image = cv2.imread('../test/image/ProgrammingLanguage.jpg')
-    corners = detect_corners(image)
+def draw_detected_document(image: np.ndarray,
+                           corners: tuple[tuple[int, int], tuple[int, int],
+                                          tuple[int, int], tuple[int, int]]) \
+        -> np.ndarray:
+    """
+    Draw the edges and label the corners of a detected document in an image.
+    """
     # Draw the edges of the document.
     max_image_dimension = max(image.shape[:2])
     edge_thickness = max_image_dimension // 400
@@ -178,9 +184,22 @@ def main():
                        corner[1] + text_size[1] // 2)
         cv2.putText(image, str(i), text_origin, font, font_scale, (0, 255, 0),
                     text_thickness, cv2.LINE_AA)
-    resized_image, _ = resize_image(image, MAX_RESIZED_DIMENSION)
-    cv2.imshow('Detected document', resized_image)
-    cv2.waitKey(0)
+    return image
+
+
+def main():
+    """
+    Run corner detection on each image in the test images directory. Press any
+    key to continue to the next image.
+    """
+    for image_path in glob.glob('../test/image/*'):
+        image = cv2.imread(image_path)
+        corners = detect_corners(image)
+        detected_document_image = draw_detected_document(image, corners)
+        resized_image, _ = resize_image(detected_document_image,
+                                        MAX_RESIZED_DIMENSION)
+        cv2.imshow('Detected document', resized_image)
+        cv2.waitKey(0)
 
 
 if __name__ == '__main__':
