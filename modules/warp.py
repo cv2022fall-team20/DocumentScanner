@@ -146,6 +146,7 @@ def warpDocumentGradientDescent(
 
 
 def warpDocumentSimple(
+
         img: np.ndarray, lt: tuple[int, int], lb: tuple[int, int], rt: tuple[int, int], rb: tuple[int, int]
     ) -> np.ndarray:
     """
