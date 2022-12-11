@@ -20,7 +20,7 @@ def warpDocumentGradientDescent(
     img: np.ndarray, 
     leftTop: tuple[int, int], leftBottom: tuple[int, int], 
     rightTop: tuple[int, int], rightBottom: tuple[int, int],
-    threshold: float = 1e-10, learning_rate: float = 1e-20, inertia: float = 0.9,
+    threshold: float = 1e-5, learning_rate: float = 1e-20, inertia: float = 0.99,
 ) -> np.ndarray:
     """
     Warp the document in the given image using four given points (corner of document).
@@ -112,17 +112,17 @@ def warpDocumentGradientDescent(
     rightTop3DRot = getWarpedPoint(rightTop, rotate3dMatrix)
     rightBottom3DRot = getWarpedPoint(rightBottom, rotate3dMatrix)
 
-    # TODO: Assert normal
-
     ######################################################################################################
     # 2. Calculate 2D warping matrix (Translation & Rotation) using edge length
     # Get width and height
-    width: float = np.sqrt(np.square(leftTop3DRot[0] - leftBottom3DRot[0]) + np.square(leftTop3DRot[1] - leftBottom3DRot[1]))
-    height: float = np.sqrt(np.square(leftTop3DRot[0] - rightTop3DRot[0]) + np.square(leftTop3DRot[1] - rightTop3DRot[1]))
-
-    # TODO: Assert same width & height
-    # assert width == np.sqrt(np.square(rightTop3DRot[0] - rightBottom3DRot[0]) + np.square(rightTop3DRot[1] - rightBottom3DRot[1]))
-    # assert height == np.sqrt(np.square(leftBottom3DRot[0] - rightBottom3DRot[0]) + np.square(leftBottom3DRot[1] - rightBottom3DRot[1]))
+    width: float = (
+            np.sqrt(np.square(leftTop3DRot[0] - leftBottom3DRot[0]) + np.square(leftTop3DRot[1] - leftBottom3DRot[1]))
+            + np.sqrt(np.square(rightTop3DRot[0] - rightBottom3DRot[0]) + np.square(rightTop3DRot[1] - rightBottom3DRot[1]))
+        ) / 2
+    height: float = (
+            np.sqrt(np.square(leftTop3DRot[0] - rightTop3DRot[0]) + np.square(leftTop3DRot[1] - rightTop3DRot[1])) \
+            + np.sqrt(np.square(leftBottom3DRot[0] - rightBottom3DRot[0]) + np.square(leftBottom3DRot[1] - rightBottom3DRot[1]))
+        ) / 2 
 
     # Set 4 destination corners based on width & height
     leftTopDst = (0, 0)
@@ -147,7 +147,8 @@ def warpDocumentGradientDescent(
 
 def warpDocumentSimple(
 
-        img: np.ndarray, lt: tuple[int, int], lb: tuple[int, int], rt: tuple[int, int], rb: tuple[int, int]
+        img: np.ndarray, lt: tuple[int, int], lb: tuple[int, int], rt: tuple[int, int], rb: tuple[int, int],
+        paperType: str | None = None,
     ) -> np.ndarray:
     """
     Warp the document in the given image using four given points (corner of document).
@@ -162,6 +163,7 @@ def warpDocumentSimple(
         lb: left bottom coordinate of image (x, y)
         rt: right top coordinate of image (x, y)
         rb: right bottom coordinate of image (x, y)
+        paperType(optional): string of paperType. 'A' for A3, A4, ... 'B' for B3, B4, ... 'Letter' and 'Legal'
     Output:
         numpy array of warped document image.
     """
@@ -170,13 +172,21 @@ def warpDocumentSimple(
     tx = -lt[0]; ty = -lt[1]
     ltTransformed = (0, 0)
     lbTransformed = ((lb[0] + tx), (lb[1] + ty))
-    rtTransformed = ((rt[0] + tx), (rt[1] + ty))
+    rtTransformed: tuple[int, int] = ((rt[0] + tx), (rt[1] + ty))
     rbTransformed = ((rb[0] + tx), (rb[1] + ty))
 
     # 2. Pick width, height to maximum width and maximum height from the warped document.
-    originalWidth = max(calcDistance(ltTransformed, rtTransformed), calcDistance(lbTransformed, rbTransformed))
     originalHeight = max(calcDistance(ltTransformed, lbTransformed), calcDistance(rtTransformed, rbTransformed))
- 
+    if paperType == "A" or paperType == "B":
+        originalWidth = originalHeight * (1 / (2**0.5))
+    elif paperType == "Letter":
+        originalWidth = originalHeight * (1 / 1.2941)
+    elif paperType == "Legal":
+        originalWidth = originalHeight * (1 / 1.6471)
+    else:
+        originalWidth = max(calcDistance(ltTransformed, rtTransformed), calcDistance(lbTransformed, rbTransformed))
+    
+
     # 3. Set 4 corners based on step 2's width and height
     ltOriginal = (0, 0)
     lbOriginal = (0, originalHeight) 
