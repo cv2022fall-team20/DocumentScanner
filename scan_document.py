@@ -5,6 +5,7 @@ import numpy as np
 
 from modules import MAX_RESIZED_DIMENSION, detect_corners, resize_image
 from modules import warpDocumentSimple, warpDocumentGradientDescent
+from modules import post_process_high_contrast, post_process_laplacian
 
 
 def scan_document(image: np.ndarray, handleWarp: str, paperType: str | None = None) -> np.ndarray:
@@ -33,21 +34,39 @@ def main():
         image = cv2.imread(image_path)
         document_image = scan_document(image, "simple")
         resized_image, _ = resize_image(document_image, MAX_RESIZED_DIMENSION)
-        cv2.imshow('Document Simple', resized_image)
-        cv2.waitKey(0)
-        cv2.imwrite(image_path.replace("image", "result/simple"), resized_image)
+        high_contrasted_image = post_process_high_contrast(resized_image)
+        laplacian_image = post_process_laplacian(resized_image)
+        cv2.imwrite(image_path.replace("image", "final_result/high_contrast/simple"), high_contrasted_image)
+        cv2.imwrite(image_path.replace("image", "final_result/laplacian/simple"), laplacian_image)
+        # cv2.imshow('Document Simple (HC)', high_contrasted_image)
+        # cv2.waitKey(0)
+        # cv2.imshow('Document Simple (DoG)', laplacian_image)
+        # cv2.waitKey(0)
+        
+
         # Simple algorithm with given ratio
         document_image = scan_document(image, "simple", 'A')
         resized_image, _ = resize_image(document_image, MAX_RESIZED_DIMENSION)
-        cv2.imshow('Document Ratio Given', resized_image)
-        cv2.waitKey(0)
-        cv2.imwrite(image_path.replace("image", "result/ratio_given"), resized_image)
+        high_contrasted_image = post_process_high_contrast(resized_image)
+        laplacian_image = post_process_laplacian(resized_image)
+        cv2.imwrite(image_path.replace("image", "final_result/high_contrast/ratio_given"), high_contrasted_image)
+        cv2.imwrite(image_path.replace("image", "final_result/laplacian/ratio_given"), laplacian_image)
+        # cv2.imshow('Document Ratio Given (HC)', high_contrasted_image)
+        # cv2.waitKey(0)
+        # cv2.imshow('Document Ratio Given (DoG)', laplacian_image)
+        # cv2.waitKey(0)
+
         # Gradient Descent algorithm
         document_image = scan_document(image, "gradient")
         resized_image, _ = resize_image(document_image, MAX_RESIZED_DIMENSION)
-        cv2.imshow('Document Gradient', resized_image)
-        cv2.waitKey(0)
-        cv2.imwrite(image_path.replace("image", "result/gradient"), resized_image)
+        high_contrasted_image = post_process_high_contrast(resized_image)
+        laplacian_image = post_process_laplacian(resized_image)
+        cv2.imwrite(image_path.replace("image", "final_result/high_contrast/gradient"), high_contrasted_image)
+        cv2.imwrite(image_path.replace("image", "final_result/laplacian/gradient"), laplacian_image)
+        # cv2.imshow('Document Gradient (HC)', high_contrasted_image)
+        # cv2.waitKey(0)
+        # cv2.imshow('Document Gradient (DoG)', laplacian_image)
+        # cv2.waitKey(0)
 
 
 if __name__ == '__main__':
